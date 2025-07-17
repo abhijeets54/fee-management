@@ -9,28 +9,79 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { User as SupabaseUser } from '@supabase/supabase-js'
+import { Student } from '@/types/database'
 
 export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [student, setStudent] = useState<Student | null>(null)
   const supabase = createClient()
+
+  const fetchStudentData = async (userId: string) => {
+    try {
+      const { data: students } = await supabase
+        .from('students')
+        .select('*')
+        .eq('user_id', userId)
+
+      if (students && students.length > 0) {
+        setStudent(students[0])
+      }
+    } catch (error) {
+      console.error('Error fetching student data:', error)
+    }
+  }
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
+      if (user) {
+        await fetchStudentData(user.id)
+      }
     }
-    
+
     getUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setUser(session?.user ?? null)
+        if (session?.user) {
+          await fetchStudentData(session.user.id)
+        } else {
+          setStudent(null)
+        }
       }
     )
 
-    return () => subscription.unsubscribe()
+    // Set up real-time subscription for student updates
+    let studentChannel: any = null
+    if (user) {
+      studentChannel = supabase
+        .channel('student-nav-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'students',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Student updated in nav:', payload)
+            setStudent(payload.new as Student)
+          }
+        )
+        .subscribe()
+    }
+
+    return () => {
+      subscription.unsubscribe()
+      if (studentChannel) {
+        supabase.removeChannel(studentChannel)
+      }
+    }
   }, [supabase.auth])
 
   const handleSignOut = async () => {
@@ -115,7 +166,7 @@ export function Navigation() {
               {user ? (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600 hidden sm:block">
-                    Welcome, {user.email?.split('@')[0]}
+                    Welcome, {student?.name || user.email?.split('@')[0] || 'User'}
                   </span>
                   <Button
                     onClick={handleSignOut}
