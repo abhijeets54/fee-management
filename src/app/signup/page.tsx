@@ -129,7 +129,7 @@ export default function SignupPage() {
           }
         }
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)

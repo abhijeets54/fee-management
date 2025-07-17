@@ -111,7 +111,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetchStudentProfile()
+  }, [])
 
+  useEffect(() => {
     // Set up real-time subscription for the current student
     const setupRealtimeSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -148,7 +150,7 @@ export default function ProfilePage() {
     return () => {
       cleanup.then(fn => fn && fn())
     }
-  }, [])
+  }, [supabase])
 
   const handleEdit = () => {
     setEditing(true)
@@ -189,7 +191,7 @@ export default function ProfilePage() {
         })
         setEditing(false)
       }
-    } catch (error) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setSaving(false)

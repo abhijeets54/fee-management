@@ -37,7 +37,9 @@ export default function AllStudentsPage() {
 
   useEffect(() => {
     fetchStudents()
-    
+  }, [])
+
+  useEffect(() => {
     // Set up real-time subscription
     const channel = supabase
       .channel('students-changes')
@@ -50,17 +52,17 @@ export default function AllStudentsPage() {
         },
         (payload) => {
           console.log('Real-time update:', payload)
-          
+
           if (payload.eventType === 'INSERT') {
             setStudents(prev => [...prev, payload.new as Student])
           } else if (payload.eventType === 'UPDATE') {
-            setStudents(prev => 
-              prev.map(student => 
+            setStudents(prev =>
+              prev.map(student =>
                 student.id === payload.new.id ? payload.new as Student : student
               )
             )
           } else if (payload.eventType === 'DELETE') {
-            setStudents(prev => 
+            setStudents(prev =>
               prev.filter(student => student.id !== payload.old.id)
             )
           }

@@ -55,34 +55,36 @@ export function Navigation() {
       }
     )
 
-    // Set up real-time subscription for student updates
-    let studentChannel: any = null
-    if (user) {
-      studentChannel = supabase
-        .channel('student-nav-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'students',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log('Student updated in nav:', payload)
-            setStudent(payload.new as Student)
-          }
-        )
-        .subscribe()
-    }
-
     return () => {
       subscription.unsubscribe()
-      if (studentChannel) {
-        supabase.removeChannel(studentChannel)
-      }
     }
   }, [supabase.auth])
+
+  // Separate useEffect for real-time subscription
+  useEffect(() => {
+    if (!user) return
+
+    const studentChannel = supabase
+      .channel('student-nav-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'students',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Student updated in nav:', payload)
+          setStudent(payload.new as Student)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(studentChannel)
+    }
+  }, [user, supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

@@ -179,7 +179,7 @@ export default function PaymentPage() {
           router.push('/profile')
         }, 3000)
       }
-    } catch (error) {
+    } catch {
       setError('Payment failed. Please try again.')
     } finally {
       setProcessing(false)
